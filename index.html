@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="products"></div>
+    <div id="update"></div>
+    <form id="addProductForm">
+      <input type="text" name="name" placeholder="name" />
+      <input type="number" name="price" placeholder="price" />
+      <input type="number" name="quantity" placeholder="quantity" />
+      <button type="submit">Add Product</button>
+    </form>
+
+    <script>
+      // Fetch and display products
+      function getProducts() {
+        fetch("/data")
+          .then((res) => res.json())
+          .then((products) => {
+            const container = document.getElementById("products");
+            container.innerHTML = "";
+            products.forEach((product) => {
+              const p = document.createElement("p");
+              p.innerHTML = `${product.name} and Quantity ${product.quantity} price ${product.price}`;
+              const updateButton = document.createElement("button");
+              updateButton.textContent = "Update";
+              updateButton.onclick = () => getUpdateProduct(product._id);
+              const deleteButton = document.createElement("button");
+              deleteButton.textContent = "Delete";
+              deleteButton.onclick = (event) => getDelete(event, product._id);
+              p.appendChild(updateButton);
+              p.appendChild(deleteButton);
+              container.appendChild(p);
+            });
+          })
+          .catch((error) => console.error("Error fetching products:", error));
+      }
+      getProducts();
+
+      // Fetch product details for update
+      function getUpdateProduct(id) {
+        fetch(`/getUpdateProduct/${id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            const update = document.getElementById("update");
+            update.innerHTML = `
+            <form id="updateProductForm">
+              <input type="text" value='${data.name}' name="name" placeholder="name" id="name"/>
+              <input type="number" value='${data.price}' name="price" placeholder="price" id="price"/>
+              <input type="number" value='${data.quantity}' name="quantity" placeholder="quantity" id="quantity"/>
+              <button type="submit">Submit</button>
+            </form>
+          `;
+            document.getElementById("updateProductForm").onsubmit = () =>
+              updateProduct(data._id);
+          })
+          .catch((error) =>
+            console.error("Error fetching product for update:", error)
+          );
+      }
+
+      // Update product
+      function updateProduct(id) {
+        const name = document.getElementById("name").value;
+        const price = document.getElementById("price").value;
+        const quantity = document.getElementById("quantity").value;
+        const product = { id, name, price, quantity };
+
+        fetch(`/updateProduct/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(product),
+        })
+          .then((res) => {
+            if (res.ok) {
+              getProducts();
+              document.getElementById("update").innerHTML = "";
+            } else {
+              throw new Error("Failed to update product");
+            }
+            return res.json();
+          })
+          .then((data) => console.log("Product updated successfully", data))
+          .catch((error) => console.error("Error updating product:", error));
+      }
+
+      // Delete product
+      function getDelete(event, id) {
+        fetch(`/deleteProduct/${id}`, {
+          method: "DELETE",
+        })
+          .then((res) => {
+            if (res.ok) {
+              console.log("Product deleted successfully");
+              event.target.parentNode.style.display = "none";
+            } else {
+              console.error("Failed to delete product");
+            }
+          })
+          .catch((error) => console.error("Error deleting product:", error));
+      }
+
+      // Add product
+      document.getElementById("addProductForm").onsubmit = function (event) {
+        event.preventDefault();
+        const formData = new FormData(this);
+        const product = Object.fromEntries(formData.entries());
+
+        fetch("/addProduct", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(product),
+        })
+          .then((res) => {
+            if (res.ok) {
+              getProducts();
+              this.reset();
+            } else {
+              throw new Error("Failed to add product");
+            }
+          })
+          .catch((error) => console.error("Error adding product:", error));
+      };
+    </script>
+  </body>
+</html>
